@@ -29,23 +29,33 @@ class TransLayer(nn.Module):
 class PPEG(nn.Module):
     def __init__(self, dim=512):
         super(PPEG, self).__init__()
-        self.proj = nn.Conv2d(dim, dim, 7, 1, 7//2, groups=dim)
-        self.proj1 = nn.Conv2d(dim, dim, 5, 1, 5//2, groups=dim)
-        self.proj2 = nn.Conv2d(dim, dim, 3, 1, 3//2, groups=dim)
+        # self.proj = nn.Conv2d(dim, dim, 7, 1, 7//2, groups=dim)
+        # self.proj1 = nn.Conv2d(dim, dim, 5, 1, 5//2, groups=dim)
+        # self.proj2 = nn.Conv2d(dim, dim, 3, 1, 3//2, groups=dim)
+        self.fc = nn.Linear(dim,dim)
+        self.fc1 = nn.Linear(dim, dim)
+        self.fc2 = nn.Linear(dim, dim)
+        self.relu = nn.ReLU()
 
     def forward(self, x, H, W):
         B, _, C = x.shape
         cls_token, feat_token = x[:, 0], x[:, 1:]
-        cnn_feat = feat_token.transpose(1, 2).view(B, C, H, W)
-        x = self.proj(cnn_feat)+cnn_feat+self.proj1(cnn_feat)+self.proj2(cnn_feat)
-        x = x.flatten(2).transpose(1, 2)
+
+        print()
+        # cnn_feat = feat_token.transpose(1, 2).view(B, C, H, W)
+        # x = self.proj(cnn_feat)+cnn_feat+self.proj1(cnn_feat)+self.proj2(cnn_feat)
+        # x = x.flatten(2).transpose(1, 2)
+        x = self.relu(self.fc(x))
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+
         x = torch.cat((cls_token.unsqueeze(1), x), dim=1)
         return x
 
 
-class TransMIL(nn.Module):
+class TransMILPPEG(nn.Module):
     def __init__(self, n_classes):
-        super(TransMIL, self).__init__()
+        super(TransMILPPEG, self).__init__()
         self.pos_layer = PPEG(dim=512)
         self._fc1 = nn.Sequential(nn.Linear(512, 512), nn.ReLU()) # 원래는 1024, 512 
         self.cls_token = nn.Parameter(torch.randn(1, 1, 512))
@@ -93,7 +103,7 @@ class TransMIL(nn.Module):
 
 if __name__ == "__main__":
     data = torch.randn((1, 6000, 1024)).cuda()
-    model = TransMIL(n_classes=2).cuda()
+    model = TransMILPPEG(n_classes=2).cuda()
     print(model.eval())
     results_dict = model(data = data)
     print(results_dict)

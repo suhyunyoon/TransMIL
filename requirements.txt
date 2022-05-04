@@ -1,0 +1,10 @@
+pytorch-lightning
+torchvision
+torchmetrics==0.7.3
+pytorch_toolbelt
+pandas
+scipy
+opencv-python
+addict
+nystrom_attention
+apex
