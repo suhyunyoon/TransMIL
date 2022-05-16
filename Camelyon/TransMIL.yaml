@@ -32,6 +32,7 @@ Data:
 Model:
     name: TransMIL
     n_classes: 2
+    input_dim: 1024
 
 
 Optimizer:

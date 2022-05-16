@@ -76,10 +76,10 @@ class PPEG(nn.Module):
 
 
 class TransMILPositionalEncoding(nn.Module):
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, input_dim=1024):
         super(TransMILPositionalEncoding, self).__init__()
         self.pos_layer = PositionalEncoding(dim=512) #PPEG(dim=512)
-        self._fc1 = nn.Sequential(nn.Linear(512, 512), nn.ReLU()) # 원래는 1024, 512 
+        self._fc1 = nn.Sequential(nn.Linear(input_dim, 512), nn.ReLU()) # 원래는 1024, 512 
         self.cls_token = nn.Parameter(torch.randn(1, 1, 512))
         self.n_classes = n_classes
         self.layer1 = TransLayer(dim=512)
@@ -105,7 +105,7 @@ class TransMILPositionalEncoding(nn.Module):
         h = torch.cat((cls_tokens, h), dim=1)
 
         #---->Translayer x1
-        h = self.pos_layer(h) # ???
+        #h = self.pos_layer(h) # ???
         h = self.layer1(h) #[B, N, 512]
 
         #---->PPEG

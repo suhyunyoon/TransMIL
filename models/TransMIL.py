@@ -44,10 +44,10 @@ class PPEG(nn.Module):
 
 
 class TransMIL(nn.Module):
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, input_dim=1024):
         super(TransMIL, self).__init__()
         self.pos_layer = PPEG(dim=512)
-        self._fc1 = nn.Sequential(nn.Linear(512, 512), nn.ReLU()) # 원래는 1024, 512 
+        self._fc1 = nn.Sequential(nn.Linear(input_dim, 512), nn.ReLU()) # 원래는 1024, 512 
         self.cls_token = nn.Parameter(torch.randn(1, 1, 512))
         self.n_classes = n_classes
         self.layer1 = TransLayer(dim=512)
@@ -76,7 +76,7 @@ class TransMIL(nn.Module):
         h = self.layer1(h) #[B, N, 512]
 
         #---->PPEG
-        h = self.pos_layer(h, _H, _W) #[B, N, 512]
+        #h = self.pos_layer(h, _H, _W) #[B, N, 512]
         
         #---->Translayer x2
         h = self.layer2(h) #[B, N, 512]
