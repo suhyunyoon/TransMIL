@@ -30,7 +30,7 @@ Data:
         num_workers: 8
 
 Model:
-    name: TransMILPPEG #TransMIL
+    name: TransMILPositionalEncoding #TransMILPositionalAttention #TransMIL
     n_classes: 2
 
 
