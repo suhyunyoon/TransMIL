@@ -9,15 +9,15 @@ from nystrom_attention import NystromAttention
 
 class PositionalEncoding(nn.Module):
     
-    def __init__(self, dim: int, dropout: float = 0.1, max_len: int = 30000):
+    def __init__(self, dim: int, dropout: float = 0.1, max_len: int = 50000):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
 
         position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, dim, 2) * (-math.log(10000.0) / dim))
-        pe = torch.zeros(max_len, 1, dim)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        pe = torch.zeros(1, max_len, dim)
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -25,7 +25,7 @@ class PositionalEncoding(nn.Module):
         Args:
             x: Tensor, shape [seq_len, batch_size, embedding_dim]
         """
-        x = x + self.pe[:x.size(0)]
+        x = x + self.pe[:,:x.size(1)]
         return self.dropout(x)
 
 class TransLayer(nn.Module):
@@ -105,14 +105,11 @@ class TransMILPositionalEncoding(nn.Module):
         h = torch.cat((cls_tokens, h), dim=1)
 
         #---->Translayer x1
-        #h = self.pos_layer(h) # ???
+        h = self.pos_layer(h) ###############################
         h = self.layer1(h) #[B, N, 512]
 
-        #---->PPEG
-        #h = self.pos_layer(h, _H, _W) #[B, N, 512]
-        h = self.pos_layer(h) #[B, N, 512]
-        
         #---->Translayer x2
+        h = self.pos_layer(h) #[B, N, 512]######################
         h = self.layer2(h) #[B, N, 512]
 
         #---->cls_token
