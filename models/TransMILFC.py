@@ -36,6 +36,8 @@ class PPEG(nn.Module):
         self.fc = nn.Linear(dim,dim)
         self.fc1 = nn.Linear(dim, dim)
         self.fc2 = nn.Linear(dim, dim)
+        self.fc3 = nn.Linear(dim, dim)
+        self.fc4 = nn.Linear(dim, dim)
         self.relu = nn.ReLU()
 
     def forward(self, x, H, W):
@@ -47,7 +49,9 @@ class PPEG(nn.Module):
         #x = x.flatten(2).transpose(1, 2)
         x_ = self.relu(self.fc(feat_token))
         x_ = self.relu(self.fc1(x_))
-        x_ = self.fc2(x_) + feat_token
+        x_ = self.relu(self.fc2(x_))
+        x_ = self.relu(self.fc3(x_))
+        x_ = self.fc4(x_) + feat_token
 
         x = torch.cat((cls_token.unsqueeze(1), x), dim=1)
         return x

@@ -76,7 +76,7 @@ class TransMIL(nn.Module):
         h = self.layer1(h) #[B, N, 512]
 
         #---->PPEG
-        #h = self.pos_layer(h, _H, _W) #[B, N, 512]
+        h = self.pos_layer(h, _H, _W) #[B, N, 512]
         
         #---->Translayer x2
         h = self.layer2(h) #[B, N, 512]
