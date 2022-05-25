@@ -1,32 +1,9 @@
-import math
-
 import torch
-from torch import nn, Tensor
+import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from nystrom_attention import NystromAttention
 
-
-class PositionalEncoding(nn.Module):
-    
-    def __init__(self, dim: int, dropout: float = 0.1, max_len: int = 60000):
-        super().__init__()
-        self.dropout = nn.Dropout(p=dropout)
-
-        position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, dim, 2) * (-math.log(10000.0) / dim))
-        pe = torch.zeros(1, max_len, dim)
-        pe[0, :, 0::2] = torch.sin(position * div_term)
-        pe[0, :, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x: Tensor) -> Tensor:
-        """
-        Args:
-            x: Tensor, shape [seq_len, batch_size, embedding_dim]
-        """
-        x = x + self.pe[:,:x.size(1)]
-        return self.dropout(x)
 
 class TransLayer(nn.Module):
 
@@ -55,30 +32,40 @@ class PPEG(nn.Module):
         self.proj = nn.Conv2d(dim, dim, 7, 1, 7//2, groups=dim)
         self.proj1 = nn.Conv2d(dim, dim, 5, 1, 5//2, groups=dim)
         self.proj2 = nn.Conv2d(dim, dim, 3, 1, 3//2, groups=dim)
-        # self.fc = nn.Linear(dim,dim)
-        # self.fc1 = nn.Linear(dim, dim)
-        # self.fc2 = nn.Linear(dim, dim)
-        # self.relu = nn.ReLU()
+        
+        self.proj2 = nn.Conv2d(dim, dim, 7, 1, 7//2, groups=dim)
+        self.proj2_1 = nn.Conv2d(dim, dim, 5, 1, 5//2, groups=dim)
+        self.proj2_2 = nn.Conv2d(dim, dim, 3, 1, 3//2, groups=dim)
+        
+        self.proj3 = nn.Conv2d(dim, dim, 7, 1, 7//2, groups=dim)
+        self.proj3_1 = nn.Conv2d(dim, dim, 5, 1, 5//2, groups=dim)
+        self.proj3_2 = nn.Conv2d(dim, dim, 3, 1, 3//2, groups=dim)
+
+        self.relu = nn.ReLU()
 
     def forward(self, x, H, W):
         B, _, C = x.shape
         cls_token, feat_token = x[:, 0], x[:, 1:]
-
         cnn_feat = feat_token.transpose(1, 2).view(B, C, H, W)
-        x = self.proj(cnn_feat)+cnn_feat+self.proj1(cnn_feat)+self.proj2(cnn_feat)
-        x = x.flatten(2).transpose(1, 2)
-        # x_ = self.relu(self.fc(feat_token))
-        # x_ = self.relu(self.fc1(x_))
-        # x_ = self.fc2(x_) + feat_token
 
+        x_1 = self.proj(cnn_feat)+self.proj1(cnn_feat)+self.proj2(cnn_feat)
+        x_1 = self.relu(x_1)
+        
+        x_2 = self.proj2(x_1)+self.proj2_1(x_1)+self.proj2_2(x_1)
+        x_2 = self.relu(x_2)
+        
+        x = self.proj3(x_2)+self.proj3_1(x_2)+self.proj3_2(x_2)
+        x = cnn_feat + x_1 + x_2 + x
+
+        x = x.flatten(2).transpose(1, 2)
         x = torch.cat((cls_token.unsqueeze(1), x), dim=1)
         return x
 
 
-class TransMILPositionalEncoding(nn.Module):
+class TransMILPPEG(nn.Module):
     def __init__(self, n_classes, input_dim=1024):
-        super(TransMILPositionalEncoding, self).__init__()
-        self.pos_layer = PositionalEncoding(dim=512) #PPEG(dim=512)
+        super(TransMILPPEG, self).__init__()
+        self.pos_layer = PPEG(dim=512)
         self._fc1 = nn.Sequential(nn.Linear(input_dim, 512), nn.ReLU()) # 원래는 1024, 512 
         self.cls_token = nn.Parameter(torch.randn(1, 1, 512))
         self.n_classes = n_classes
@@ -105,11 +92,12 @@ class TransMILPositionalEncoding(nn.Module):
         h = torch.cat((cls_tokens, h), dim=1)
 
         #---->Translayer x1
-        h = self.pos_layer(h) ###############################
         h = self.layer1(h) #[B, N, 512]
 
+        #---->PPEG
+        h = self.pos_layer(h, _H, _W) #[B, N, 512]
+        
         #---->Translayer x2
-        h = self.pos_layer(h) #[B, N, 512]######################
         h = self.layer2(h) #[B, N, 512]
 
         #---->cls_token
@@ -124,7 +112,7 @@ class TransMILPositionalEncoding(nn.Module):
 
 if __name__ == "__main__":
     data = torch.randn((1, 6000, 1024)).cuda()
-    model = TransMILPositionalEncoding(n_classes=2).cuda()
+    model = TransMILPPEG(n_classes=2).cuda()
     print(model.eval())
     results_dict = model(data = data)
     print(results_dict)
