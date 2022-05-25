@@ -120,7 +120,6 @@ class PGCN(nn.Module):
         # iteration by Mini-Batch
         f_arr = []
         for i, f in enumerate(feat_token):
-            print(adj[i].size())
             adj_i = dense_to_sparse(adj[i])
             f_arr.append(self.gcn(f, adj_i))
 
@@ -163,8 +162,7 @@ class TransMILPositionalGCN(nn.Module):
 
         #---->PPEG
         #h = self.pos_layer(h, _H, _W) #[B, N, 512]
-        if H < 10000:
-            h = self.pos_layer(h) #[B, N, 512]
+        h = self.pos_layer(h) #[B, N, 512]
         
         #---->Translayer x2
         h = self.layer2(h) #[B, N, 512]
