@@ -56,21 +56,18 @@ def main(cfg):
     #import pdb; pdb.set_trace();
     
     #---->Instantiate Trainer
-    def get_trainer():
-        trainer = Trainer(
-            num_sanity_val_steps=0, 
-            logger=cfg.load_loggers,
-            callbacks=cfg.callbacks,
-            max_epochs= cfg.General.epochs,
-            gpus=cfg.General.gpus,
-            #amp_level=cfg.General.amp_level,  
-            precision=cfg.General.precision,  
-            accumulate_grad_batches=cfg.General.grad_acc,
-            deterministic=True,
-            check_val_every_n_epoch=1,
-        )
-        return trainer
-    trainer = get_trainer()
+    trainer = Trainer(
+        num_sanity_val_steps=0, 
+        logger=cfg.load_loggers,
+        callbacks=cfg.callbacks,
+        max_epochs= cfg.General.epochs,
+        gpus=cfg.General.gpus,
+        #amp_level=cfg.General.amp_level,  
+        precision=cfg.General.precision,  
+        accumulate_grad_batches=cfg.General.grad_acc,
+        deterministic=True,
+        check_val_every_n_epoch=1,
+    )
 
     #---->train or test
     if cfg.General.server == 'train':
@@ -80,11 +77,12 @@ def main(cfg):
         model_paths = [str(model_path) for model_path in model_paths if 'epoch' in str(model_path)]
         # Sort by date
         model_paths.sort(key=os.path.getmtime)
-        for path in model_paths:
-            trainer = get_trainer()
+        for i, path in enumerate(model_paths):
             print('---->MODEL PATH:', path)
-            new_model = model.load_from_checkpoint(checkpoint_path=path, cfg=cfg)
-            trainer.test(model=new_model, datamodule=dm)
+            #new_model = model.load_from_checkpoint(checkpoint_path=path, cfg=cfg)
+            trainer.test(model=model, datamodule=dm, ckpt_path=path)
+            os.rename(Path(cfg.log_path, 'result.csv'),  Path(cfg.log_path, f'result{i}.csv'))
+
 
 if __name__ == '__main__':
 
