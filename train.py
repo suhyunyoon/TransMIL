@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import numpy as np
 import glob
+import os
 
 from datasets import DataInterface
 from models import ModelInterface
@@ -18,6 +19,7 @@ def make_parse():
     parser.add_argument('--config', default='Camelyon/TransMIL.yaml',type=str)
     parser.add_argument('--gpus', default = [2])
     parser.add_argument('--fold', default = 0)
+    parser.add_argument('--seed', default = -1, type=int)
     args = parser.parse_args()
     return args
 
@@ -54,18 +56,21 @@ def main(cfg):
     #import pdb; pdb.set_trace();
     
     #---->Instantiate Trainer
-    trainer = Trainer(
-        num_sanity_val_steps=0, 
-        logger=cfg.load_loggers,
-        callbacks=cfg.callbacks,
-        max_epochs= cfg.General.epochs,
-        gpus=cfg.General.gpus,
-        #amp_level=cfg.General.amp_level,  
-        precision=cfg.General.precision,  
-        accumulate_grad_batches=cfg.General.grad_acc,
-        deterministic=True,
-        check_val_every_n_epoch=1,
-    )
+    def get_trainer():
+        trainer = Trainer(
+            num_sanity_val_steps=0, 
+            logger=cfg.load_loggers,
+            callbacks=cfg.callbacks,
+            max_epochs= cfg.General.epochs,
+            gpus=cfg.General.gpus,
+            #amp_level=cfg.General.amp_level,  
+            precision=cfg.General.precision,  
+            accumulate_grad_batches=cfg.General.grad_acc,
+            deterministic=True,
+            check_val_every_n_epoch=1,
+        )
+        return trainer
+    trainer = get_trainer()
 
     #---->train or test
     if cfg.General.server == 'train':
@@ -73,7 +78,10 @@ def main(cfg):
     else:
         model_paths = list(cfg.log_path.glob('*.ckpt'))
         model_paths = [str(model_path) for model_path in model_paths if 'epoch' in str(model_path)]
+        # Sort by date
+        model_paths.sort(key=os.path.getmtime)
         for path in model_paths:
+            trainer = get_trainer()
             print('---->MODEL PATH:', path)
             new_model = model.load_from_checkpoint(checkpoint_path=path, cfg=cfg)
             trainer.test(model=new_model, datamodule=dm)
@@ -88,6 +96,8 @@ if __name__ == '__main__':
     cfg.General.gpus = args.gpus
     cfg.General.server = args.stage
     cfg.Data.fold = args.fold
+    if args.seed != -1:
+        cfg.General.seed = args.seed
 
     #---->main
     main(cfg)

@@ -55,10 +55,6 @@ class PPEG(nn.Module):
         self.proj = nn.Conv2d(dim, dim, 7, 1, 7//2, groups=dim)
         self.proj1 = nn.Conv2d(dim, dim, 5, 1, 5//2, groups=dim)
         self.proj2 = nn.Conv2d(dim, dim, 3, 1, 3//2, groups=dim)
-        # self.fc = nn.Linear(dim,dim)
-        # self.fc1 = nn.Linear(dim, dim)
-        # self.fc2 = nn.Linear(dim, dim)
-        # self.relu = nn.ReLU()
 
     def forward(self, x, H, W):
         B, _, C = x.shape
@@ -67,9 +63,6 @@ class PPEG(nn.Module):
         cnn_feat = feat_token.transpose(1, 2).view(B, C, H, W)
         x = self.proj(cnn_feat)+cnn_feat+self.proj1(cnn_feat)+self.proj2(cnn_feat)
         x = x.flatten(2).transpose(1, 2)
-        # x_ = self.relu(self.fc(feat_token))
-        # x_ = self.relu(self.fc1(x_))
-        # x_ = self.fc2(x_) + feat_token
 
         x = torch.cat((cls_token.unsqueeze(1), x), dim=1)
         return x
@@ -78,7 +71,8 @@ class PPEG(nn.Module):
 class TransMILPositionalEncoding(nn.Module):
     def __init__(self, n_classes, input_dim=1024):
         super(TransMILPositionalEncoding, self).__init__()
-        self.pos_layer = PositionalEncoding(dim=512) #PPEG(dim=512)
+        self.pos_enc = PositionalEncoding(dim=512)
+        self.pos_layer = PPEG(dim=512)
         self._fc1 = nn.Sequential(nn.Linear(input_dim, 512), nn.ReLU()) # 원래는 1024, 512 
         self.cls_token = nn.Parameter(torch.randn(1, 1, 512))
         self.n_classes = n_classes
@@ -105,11 +99,14 @@ class TransMILPositionalEncoding(nn.Module):
         h = torch.cat((cls_tokens, h), dim=1)
 
         #---->Translayer x1
-        h = self.pos_layer(h) ###############################
+        h = self.pos_enc(h) ###############################
         h = self.layer1(h) #[B, N, 512]
 
+        #---->PPEG
+        h = self.pos_layer(h, _H, _W) #[B, N, 512]
+
         #---->Translayer x2
-        h = self.pos_layer(h) #[B, N, 512]######################
+        h = self.pos_enc(h) #[B, N, 512]######################
         h = self.layer2(h) #[B, N, 512]
 
         #---->cls_token
