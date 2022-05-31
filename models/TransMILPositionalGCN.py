@@ -100,22 +100,22 @@ class PGCN(nn.Module):
         cls_token, feat_token = x[:, 0], x[:, 1:] #[B(1), (1, N-1), 512]
 
         # Generate adjacency matrix
-        with torch.no_grad():
-            feat_n = feat_token.norm(dim=2)[:,:,None]
-            feat_norm = feat_token / torch.max(feat_n, self.eps * torch.ones_like(feat_n))
-            sim = torch.bmm(feat_norm, feat_norm.transpose(1,2))
-            #sim = self.cos(feat_token, feat_token.transpose(1,2), eps=self.eps)
-            
-            adj = sim # >= self.thres
-            #print(sim.detach().cpu(), adj.size(), adj.size(1)*adj.size(2), adj.sum())
+        # with torch.no_grad():
+        feat_n = feat_token.norm(dim=2)[:,:,None]
+        feat_norm = feat_token / torch.max(feat_n, self.eps * torch.ones_like(feat_n))
+        sim = torch.bmm(feat_norm, feat_norm.transpose(1,2))
+        #sim = self.cos(feat_token, feat_token.transpose(1,2), eps=self.eps)
+        
+        adj = sim # >= self.thres
+        #print(sim.detach().cpu(), adj.size(), adj.size(1)*adj.size(2), adj.sum())
 
-            # Pruning
-            topk = max(int(adj.size(1) * 0.01), 100)
-            topk_val, _ = torch.topk(adj, topk, largest=False, sorted=True, dim=-1)
-            # get topk value scalar
-            topk_val = topk_val[:,:,-1:]
-            # Remove weights of useless edges
-            adj = torch.where(adj >= topk_val[:,:,-1:], adj, torch.zeros_like(adj)).float()
+        # Pruning
+        topk = max(int(adj.size(1) * 0.01), 100)
+        topk_val, _ = torch.topk(adj, topk, largest=False, sorted=True, dim=-1)
+        # get topk value scalar
+        topk_val = topk_val[:,:,-1:]
+        # Remove weights of useless edges
+        adj = torch.where(adj >= topk_val[:,:,-1:], adj, torch.zeros_like(adj)).float()
 
         # iteration by Mini-Batch
         f_arr = []
